@@ -1,0 +1,17 @@
+spring:
+  main:
+    banner-mode: "off"
+  profiles:
+    default: dev
+  datasource:
+    url: "jdbc:mariadb://mariadb-instance-id-shedlock:3306/shedlock"
+    username: "shedlock"
+    password: "shedlock"
+  liquibase:
+    enabled: true
+    change-log: "classpath:db/changelog/db.changelog-master.xml"
+    clear-checksums: true
+#
+#logging:
+#  pattern:
+#    console: "%d{HH:mm:ss.SSS} %-5level %-17logger{0} %msg%n"

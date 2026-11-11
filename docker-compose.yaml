@@ -1,0 +1,55 @@
+services:
+  mariadb-instance-id-shedlock:
+    image: mariadb:11.8@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd
+    container_name: mariadb-instance-id-shedlock
+    command: --innodb-snapshot-isolation=OFF
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: shedlock
+      MARIADB_USER: shedlock
+      MARIADB_PASSWORD: shedlock
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      retries: 30
+
+  app-instance-1:
+    build: .
+    image: aws-app-instance-id-shedlock-example
+    container_name: app-instance-1
+    depends_on:
+      mariadb-instance-id-shedlock:
+        condition: service_healthy
+
+  app-instance-2:
+    build: .
+    image: aws-app-instance-id-shedlock-example
+    container_name: app-instance-2
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      mariadb-instance-id-shedlock:
+        condition: service_healthy
+
+  liquibase:
+    profiles: ["tools"]
+    build:
+      dockerfile_inline: |
+        FROM liquibase/liquibase:5.0.4@sha256:060f96efff4811ccf03957ff3160f21ea04139b89940640f8ad54a065cdc6906
+        ADD --chmod=644 --checksum=sha256:919b8c1c771d9ee3465811462f242c9543ab401e140c64988ddbf1d8abcb18b2 https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/3.5.10/mariadb-java-client-3.5.10.jar /liquibase/lib/
+    environment:
+      LIQUIBASE_SEARCH_PATH: /data/src/main/resources
+      LIQUIBASE_COMMAND_CHANGELOG_FILE: db/changelog/db.changelog-master.xml
+      LIQUIBASE_COMMAND_URL: jdbc:mariadb://mariadb-instance-shedlock:3306/shedlock
+      LIQUIBASE_COMMAND_USERNAME: shedlock
+      LIQUIBASE_COMMAND_PASSWORD: shedlock
+    volumes:
+      - .:/data
+    depends_on:
+      mariadb-instance-shedlock:
+        condition: service_healthy
+
+volumes:
+  mariadb-data:
